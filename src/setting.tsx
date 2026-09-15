@@ -78,6 +78,11 @@ export interface PluginSettings {
   /** 是否显示分享图标（原生文件管理器 & Notebook Navigator）
    * Whether to show share icon (native file explorer & Notebook Navigator) */
   showShareIcon: boolean
+  /** 渲染快照存放文件夹（相对 Vault 根目录）
+   * Folder for rendered share snapshots (relative to vault root) */
+  shareSnapshotFolder: string
+  /** 新建分享时默认使用的模式 */
+  shareSnapshotDefaultMode: "source" | "rendered"
   /** 插件更新源 */
   updateSource: "github" | "cnb"
   /** 手机端状态点位置 */
@@ -159,6 +164,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   autoPauseMinimized: false,
   sharedPaths: [],
   showShareIcon: true,
+  shareSnapshotFolder: "_fns-shares",
+  shareSnapshotDefaultMode: "source",
   updateSource: "github",
   mobileStatusDotPosition: "menu-bar",
   showUpgradeBadge: true,

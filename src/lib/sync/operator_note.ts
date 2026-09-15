@@ -3,6 +3,7 @@ import { TFile, TAbstractFile, normalizePath } from "obsidian";
 import { ReceiveMessage, ReceiveMtimeMessage, ReceivePathMessage, SyncEndData } from "../utils/types";
 import { hashContent, hashContentAsync, dump, dumpError, isPathExcluded, getSafeCtime, vaultDelete, checkAndNotifyCaseConflict, getPluginDir } from "../utils/helpers";
 import { SyncLogManager } from "./sync_log_manager";
+import { notifyNoteSynced } from "./note_sync_waiter";
 import type FastSync from "../../main";
 
 
@@ -654,6 +655,7 @@ export const receiveNoteModifyAck = function (data: { lastTime?: number; path?: 
     } else {
       dump(`NoteModifyAck received for non-pending path: ${data.path}`)
     }
+    notifyNoteSynced(data.path)
   }
   if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastNoteSyncTime"))) {
     plugin.localStorageManager.setMetadata("lastNoteSyncTime", data.lastTime)
