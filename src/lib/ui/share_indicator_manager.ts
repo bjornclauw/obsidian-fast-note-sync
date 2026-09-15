@@ -82,7 +82,11 @@ export class ShareIndicatorManager {
             if (!path) return;
 
             const isShared = sharedPaths.has(path) || ancestorFolders.has(path);
-            const targetEl = el.parentElement || el; // 尝试给父级（.nav-file / .nav-folder）加标记 / Tag parent element
+            // 用 closest 命中真正的 .nav-file / .nav-folder 容器：某些插件/主题会在
+            // 标题外再包一层，此时 parentElement 不是容器，会导致该行无法被筛选保留
+            // Use closest() so the mark lands on the real .nav-file / .nav-folder container;
+            // some plugins/themes wrap the title, so parentElement is not the container.
+            const targetEl = el.closest('.nav-file, .nav-folder') ?? el.parentElement ?? el;
             
             if (isShared) {
                 if (targetEl.getAttribute('data-fns-shared') !== 'true') {
@@ -139,11 +143,14 @@ export class ShareIndicatorManager {
             if (paths === null) return;
 
             const newSet = new Set(paths);
-            if (this.sharedPaths.size === newSet.size && paths.every(p => this.sharedPaths.has(p))) return;
-
-            this.sharedPaths = newSet;
-            this.plugin.settings.sharedPaths = paths;
-            await this.plugin.saveData(this.plugin.settings);
+            const changed = !(this.sharedPaths.size === newSet.size && paths.every(p => this.sharedPaths.has(p)));
+            if (changed) {
+                this.sharedPaths = newSet;
+                this.plugin.settings.sharedPaths = paths;
+                await this.plugin.saveData(this.plugin.settings);
+            }
+            // 即使路径集合没变也要重新打标，避免文件树重渲染后标记丢失
+            // Re-mark even when the set is unchanged, so marks survive file-tree re-renders
             this.updateAllElements();
         } finally {
             this.isSyncing = false;
@@ -186,8 +193,15 @@ export class ShareIndicatorManager {
     toggleFilter(): void {
         this._isFilterActive = !this._isFilterActive;
         if (this._isFilterActive) {
+            // 先刷新标记再启用筛选，避免用过期/缺失的标记过滤
+            // Refresh marks before enabling the filter to avoid filtering on stale marks
+            this.updateAllElements();
             activeDocument.body.addClass('fns-filter-active');
             this.expandSharedFolders();
+            // 展开文件夹后子节点是延迟渲染的，稍后再补一次标记
+            // Children render lazily after expanding, so re-mark shortly after
+            window.setTimeout(() => this.updateAllElements(), 150);
+            window.setTimeout(() => this.updateAllElements(), 600);
         } else {
             activeDocument.body.removeClass('fns-filter-active');
         }
@@ -207,15 +221,14 @@ export class ShareIndicatorManager {
 
     private expandSharedFolders(): void {
         const ancestors = this.getAllAncestorFolders();
-        for (const folderPath of ancestors) {
-            const folderEl = activeDocument.querySelector(
-                `.nav-folder:has(> .nav-folder-title[data-path="${folderPath}"]).is-collapsed`
-            );
-            if (folderEl) {
-                const titleEl = folderEl.querySelector(".nav-folder-title");
-                (titleEl as HTMLElement)?.click();
-            }
-        }
+        if (ancestors.size === 0) return;
+        // 避免 :has() 选择器（旧内核/第三方 DOM 结构下可能不生效），改为遍历折叠文件夹
+        // Avoid :has() (may fail on older engines / third-party DOM) by iterating collapsed folders
+        activeDocument.querySelectorAll<HTMLElement>(".nav-folder.is-collapsed").forEach((folderEl) => {
+            const titleEl = folderEl.querySelector<HTMLElement>(":scope > .nav-folder-title");
+            const path = titleEl?.getAttribute("data-path");
+            if (path && ancestors.has(path)) titleEl?.click();
+        });
     }
 
     unload(): void {
