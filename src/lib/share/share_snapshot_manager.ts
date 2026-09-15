@@ -1,4 +1,5 @@
 import { normalizePath, TAbstractFile, TFile } from "obsidian";
+import { gzipSync, strToU8 } from "fflate";
 
 import type FastSync from "../../main";
 import { dump, dumpError, hashContent, hashContentAsync } from "../utils/helpers";
@@ -103,7 +104,13 @@ export class ShareSnapshotManager {
       generated: Date.now(),
     };
 
-    const snapshotContent = buildSnapshotContent(meta, render.html);
+    const payload = JSON.stringify({
+      v: SNAPSHOT_RENDER_VERSION,
+      body: render.bodyClass,
+      css: this.gzipBase64(render.css),
+      html: render.html,
+    });
+    const snapshotContent = buildSnapshotContent(meta, payload);
     await this.ensureFolder();
     const snapshotPath = this.snapshotPathFor(file.path);
 
@@ -264,6 +271,16 @@ export class ShareSnapshotManager {
         }
       }
     }
+  }
+
+  private gzipBase64(input: string): string {
+    const bytes = gzipSync(strToU8(input));
+    let binary = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    }
+    return btoa(binary);
   }
 
   private async ensureFolder(): Promise<void> {

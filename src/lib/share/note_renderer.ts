@@ -15,6 +15,8 @@ const PLUGIN_OWNED_LANGUAGES = ["dataview", "dataviewjs", "excalidraw", "chart"]
 
 export interface NoteRenderResult {
   html: string;
+  css: string;
+  bodyClass: string;
   timedOut: boolean;
   unrenderable: string[];
 }
@@ -52,7 +54,42 @@ export class NoteRenderer {
       dump(`ShareSnapshot: unrendered plugin blocks in ${file.path}: ${unrenderable.join(", ")}`);
     }
 
-    return { html: container.innerHTML, timedOut, unrenderable };
+    const html = this.wrapPreview(container.innerHTML);
+    const css = this.collectDocumentCss();
+    const bodyClass = this.detectBodyClasses();
+    return { html, css, bodyClass, timedOut, unrenderable };
+  }
+
+  // Wrap in Obsidian's reading-view containers so theme/app CSS applies exactly as in-app.
+  private wrapPreview(inner: string): string {
+    return `<div class="markdown-preview-view markdown-rendered"><div class="markdown-preview-sizer markdown-preview-section">${inner}</div></div>`;
+  }
+
+  // Serialize the active stylesheets (app.css + theme + snippets + plugin CSS) so the share
+  // viewer can render pixel-accurately. Cross-origin sheets are skipped.
+  private collectDocumentCss(): string {
+    const parts: string[] = [];
+    for (const sheet of Array.from(document.styleSheets)) {
+      try {
+        const rules = sheet.cssRules;
+        if (!rules) continue;
+        for (const rule of Array.from(rules)) parts.push(rule.cssText);
+      } catch {
+        // inaccessible (cross-origin) sheet
+      }
+    }
+    return parts.join("\n");
+  }
+
+  private detectBodyClasses(): string {
+    const body = document.body;
+    const keep = Array.from(body.classList).filter(
+      (cls) => cls === "theme-dark" || cls === "theme-light" || cls.startsWith("is-"),
+    );
+    if (!keep.includes("theme-dark") && !keep.includes("theme-light")) {
+      keep.push(body.classList.contains("theme-dark") ? "theme-dark" : "theme-light");
+    }
+    return keep.join(" ");
   }
 
   private settle(el: HTMLElement): Promise<boolean> {

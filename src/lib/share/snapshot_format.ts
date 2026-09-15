@@ -1,7 +1,7 @@
 import { parseYaml, stringifyYaml } from "obsidian";
 
 export const SNAPSHOT_MARKER_KEY = "fns-share-snapshot";
-export const SNAPSHOT_RENDER_VERSION = 1;
+export const SNAPSHOT_RENDER_VERSION = 2;
 export const SNAPSHOT_HTML_LANG = "fns-rendered";
 // 4-backtick fence so any ``` run inside the baked HTML can never close the block early.
 export const SNAPSHOT_FENCE = "````";
@@ -16,7 +16,7 @@ export interface SnapshotMeta {
   generated: number;
 }
 
-export function buildSnapshotContent(meta: SnapshotMeta, html: string): string {
+export function buildSnapshotContent(meta: SnapshotMeta, payload: string): string {
   const frontmatter = stringifyYaml({
     [SNAPSHOT_MARKER_KEY]: 1,
     "fns-source": meta.source,
@@ -28,7 +28,7 @@ export function buildSnapshotContent(meta: SnapshotMeta, html: string): string {
     "fns-generated": meta.generated,
   });
   const fmBlock = frontmatter.endsWith("\n") ? frontmatter : frontmatter + "\n";
-  return `---\n${fmBlock}---\n\n${SNAPSHOT_FENCE}${SNAPSHOT_HTML_LANG}\n${html}\n${SNAPSHOT_FENCE}\n`;
+  return `---\n${fmBlock}---\n\n${SNAPSHOT_FENCE}${SNAPSHOT_HTML_LANG}\n${payload}\n${SNAPSHOT_FENCE}\n`;
 }
 
 export function isSnapshotFrontmatter(frontmatter: Record<string, unknown> | null | undefined): boolean {
@@ -67,7 +67,7 @@ export function parseFrontmatterBlock(data: string): Record<string, unknown> | u
   }
 }
 
-export function extractRenderedHtml(content: string): string | null {
+export function extractRenderedContent(content: string): string | null {
   const open = `${SNAPSHOT_FENCE}${SNAPSHOT_HTML_LANG}`;
   const start = content.indexOf(open);
   if (start === -1) return null;
