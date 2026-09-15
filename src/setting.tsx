@@ -6,7 +6,7 @@ import { parseRules, SyncRule, getPluginDir, debounce, showSyncNotice, dump, dum
 import { resetSettingSyncTime, rebuildAllHashes, clearAllHashes } from "./lib/sync/operator";
 import { SettingsView, SupportView } from "./views/settings-view";
 import { RuleEditorModal } from "./views/rule-editor-modal";
-import { PathSuggestOptions } from "./views/path-suggest";
+import { PathSuggest, PathSuggestOptions } from "./views/path-suggest";
 import { DebugLogModal } from "./views/debug-log-modal";
 import { ConfirmModal } from "./views/confirm-modal";
 import { ShareManageModal } from "./views/share-manage-modal";
@@ -188,7 +188,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   largeFileNoticeShown: [],
 }
 
-export type TabId = "GENERAL" | "DISPLAY" | "SHORTCUT" | "REMOTE" | "SYNC" | "CLOUD" | "DEBUG"
+export type TabId = "GENERAL" | "DISPLAY" | "SHORTCUT" | "REMOTE" | "SYNC" | "SHARE" | "CLOUD" | "DEBUG"
 
 // 预览 toast 位置，文案固定为 "Toast" / Preview toast position with fixed text "Toast"
 function showTestToast(top: number) {
@@ -317,6 +317,9 @@ export class SettingTab extends PluginSettingTab {
         case "SYNC":
           this.renderSyncSettings(contentEl)
           break
+        case "SHARE":
+          this.renderShareSettings(contentEl)
+          break
         case "CLOUD":
           this.renderCloudSettings(contentEl)
           break
@@ -373,7 +376,7 @@ export class SettingTab extends PluginSettingTab {
     const threshold = 50
 
     if (Math.abs(deltaX) > threshold && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
-      const tabs: TabId[] = ["GENERAL", "DISPLAY", "REMOTE", "SYNC", "SHORTCUT", "CLOUD", "DEBUG"]
+      const tabs: TabId[] = ["GENERAL", "DISPLAY", "REMOTE", "SYNC", "SHARE", "SHORTCUT", "CLOUD", "DEBUG"]
       const currentIndex = tabs.indexOf(this.activeTab)
 
       if (deltaX > 0) {
@@ -480,6 +483,7 @@ export class SettingTab extends PluginSettingTab {
       { id: "DISPLAY", label: $("setting.tab.display") },
       { id: "REMOTE", label: $("setting.tab.remote") },
       { id: "SYNC", label: $("setting.tab.sync") },
+      { id: "SHARE", label: $("setting.tab.share") },
       { id: "SHORTCUT", label: $("setting.tab.shortcut") },
       { id: "CLOUD", label: $("setting.tab.cloud") },
       { id: "DEBUG", label: $("setting.tab.debug") },
@@ -1846,6 +1850,40 @@ export class SettingTab extends PluginSettingTab {
           }),
       )
     this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.sync.merge_strategy_desc"))
+  }
+
+  private renderShareSettings(set: HTMLElement) {
+    new Setting(set)
+      .setName($("setting.share.snapshot_folder"))
+      .setDesc($("setting.share.snapshot_folder_desc"))
+      .addText((text) => {
+        text
+          .setPlaceholder("_fns-shares")
+          .setValue(this.plugin.settings.shareSnapshotFolder || "")
+          .onChange(async (value) => {
+            this.plugin.settings.shareSnapshotFolder = value.trim()
+            await this.plugin.saveSettings()
+          })
+        new PathSuggest(this.app, text.inputEl, (value) => {
+          text.setValue(value)
+          this.plugin.settings.shareSnapshotFolder = value
+          void this.plugin.saveSettings()
+        }, { onlyFolders: true, excludeConfigDir: true })
+      })
+
+    new Setting(set)
+      .setName($("setting.share.default_mode"))
+      .setDesc($("setting.share.default_mode_desc"))
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("source", $("setting.share.mode.source"))
+          .addOption("rendered", $("setting.share.mode.rendered"))
+          .setValue(this.plugin.settings.shareSnapshotDefaultMode || "source")
+          .onChange(async (value) => {
+            this.plugin.settings.shareSnapshotDefaultMode = value === "rendered" ? "rendered" : "source"
+            await this.plugin.saveSettings()
+          })
+      )
   }
 
   private renderCloudSettings(set: HTMLElement) {

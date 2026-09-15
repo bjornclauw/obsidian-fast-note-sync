@@ -570,4 +570,11 @@ export default {
   "ui.conflict.use_local": "로컬 사용->",
   "ui.conflict.use_remote": "원격 사용->",
   "ui.log.action.NoteManualMergeConflict": "노트 내용 충돌",
+  "setting.tab.share": "공유",
+  "setting.share.snapshot_folder": "렌더링된 스냅샷 폴더",
+  "setting.share.snapshot_folder_desc": "공유 전 렌더링된 스냅샷을 저장하는 폴더입니다. 일반 노트처럼 서버에 동기화됩니다.",
+  "setting.share.default_mode": "기본 공유 모드",
+  "setting.share.default_mode_desc": "공유 대화상자에서 기본으로 선택되는 모드입니다.",
+  "setting.share.mode.source": "소스(Markdown)",
+  "setting.share.mode.rendered": "렌더링(모든 플러그인)",
 };

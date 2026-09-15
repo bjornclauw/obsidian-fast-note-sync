@@ -5,6 +5,8 @@ import { clearAllTempChunks, abortAllFileOperations, resetFileOperations } from 
 import { SettingTab, PluginSettings, DEFAULT_SETTINGS } from "./setting";
 import { SyncLogView, SYNC_LOG_VIEW_TYPE } from "./views/sync-log-view";
 import { ShareIndicatorManager } from "./lib/ui/share_indicator_manager";
+import { ShareSnapshotManager } from "./lib/share/share_snapshot_manager";
+import { cancelAllNoteSyncWaiters } from "./lib/sync/note_sync_waiter";
 import { FolderSnapshotManager } from "./lib/storage/folder_snapshot_manager";
 import { AppWithInternal } from "./lib/utils/types";
 import { LocalStorageManager } from "./lib/storage/local_storage_manager";
@@ -60,6 +62,7 @@ export default class FastSync extends Plugin {
   eventManager: EventManager                      // 事件管理器
   menuManager: MenuManager                        // 菜单管理器
   shareIndicatorManager: ShareIndicatorManager    // 分享指示器管理器 / Share indicator manager
+  shareSnapshotManager: ShareSnapshotManager      // 渲染分享快照管理器 / Rendered share snapshot manager
   fileHashManager: FileHashManager                // 文件哈希管理器
   configHashManager: ConfigHashManager            // 配置哈希管理器
   localStorageManager: LocalStorageManager        // 本地存储管理器
@@ -541,6 +544,10 @@ export default class FastSync extends Plugin {
       this.folderSnapshotManager = new FolderSnapshotManager(this)
       this.configManager = new ConfigManager(this)
 
+      // 初始化渲染分享快照管理器 / Initialize rendered share snapshot manager
+      this.shareSnapshotManager = new ShareSnapshotManager(this)
+      void this.shareSnapshotManager.init()
+
       // 5. 并行初始化哈希和快照 (耗时任务)
       const initPromises: Promise<void>[] = [
         this.fileHashManager.initialize(),
@@ -642,6 +649,7 @@ export default class FastSync extends Plugin {
     abortAllFileOperations()
     this.localStorageManager?.stopWatch()
     this.shareIndicatorManager?.unload()
+    cancelAllNoteSyncWaiters()
     this.menuManager?.unload()
     // 清理配置重载模块级计时器，避免插件卸载后仍触发回调
     cleanupConfigReloadTimer()

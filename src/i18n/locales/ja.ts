@@ -570,4 +570,11 @@ export default {
   "ui.conflict.use_local": "ローカルを使用->",
   "ui.conflict.use_remote": "リモートを使用->",
   "ui.log.action.NoteManualMergeConflict": "ノート内容の競合",
+  "setting.tab.share": "共有",
+  "setting.share.snapshot_folder": "レンダリング済みスナップショットフォルダ",
+  "setting.share.snapshot_folder_desc": "共有前にレンダリング済みスナップショットを保存するフォルダです。通常のノートと同様にサーバーへ同期されます。",
+  "setting.share.default_mode": "既定の共有モード",
+  "setting.share.default_mode_desc": "共有ダイアログで既定で選択されるモード。",
+  "setting.share.mode.source": "ソース（Markdown）",
+  "setting.share.mode.rendered": "レンダリング（全プラグイン）",
 };

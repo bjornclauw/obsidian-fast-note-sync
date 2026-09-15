@@ -571,4 +571,11 @@ export default {
   "ui.conflict.use_remote": "Use Remote ->",
   "ui.conflict.diff_skipped": "This file is large, so the line-by-line diff was skipped. Use the buttons above to take the local/remote version, or edit directly in the right-hand editor.",
   "ui.log.action.NoteManualMergeConflict": "Note Content Conflict",
+  "setting.tab.share": "Share",
+  "setting.share.snapshot_folder": "Rendered snapshot folder",
+  "setting.share.snapshot_folder_desc": "Folder where rendered snapshots are stored before sharing. It syncs to the server like a normal note.",
+  "setting.share.default_mode": "Default share mode",
+  "setting.share.default_mode_desc": "Which mode the share dialog selects by default.",
+  "setting.share.mode.source": "Source (Markdown)",
+  "setting.share.mode.rendered": "Rendered (all plugins)",
 };

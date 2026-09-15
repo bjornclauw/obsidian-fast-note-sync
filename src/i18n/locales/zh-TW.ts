@@ -570,4 +570,11 @@ export default {
   "ui.conflict.use_local": "使用本地->",
   "ui.conflict.use_remote": "使用遠端->",
   "ui.log.action.NoteManualMergeConflict": "筆記內容衝突",
+  "setting.tab.share": "分享",
+  "setting.share.snapshot_folder": "渲染快照資料夾",
+  "setting.share.snapshot_folder_desc": "分享前渲染快照的存放資料夾。它會像一般筆記一樣同步到伺服器。",
+  "setting.share.default_mode": "預設分享模式",
+  "setting.share.default_mode_desc": "分享對話框預設選擇的模式。",
+  "setting.share.mode.source": "原始（Markdown）",
+  "setting.share.mode.rendered": "渲染（全部外掛）",
 };
