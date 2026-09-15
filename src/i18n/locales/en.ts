@@ -569,5 +569,6 @@ export default {
   "ui.conflict.final_title": "Resolved Conflict Content",
   "ui.conflict.use_local": "Use Local ->",
   "ui.conflict.use_remote": "Use Remote ->",
+  "ui.conflict.diff_skipped": "This file is large, so the line-by-line diff was skipped. Use the buttons above to take the local/remote version, or edit directly in the right-hand editor.",
   "ui.log.action.NoteManualMergeConflict": "Note Content Conflict",
 };
