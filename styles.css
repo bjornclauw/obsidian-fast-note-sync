@@ -3811,13 +3811,17 @@ body .suggestion-container {
 .fns-share-stale-banner {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
   padding: 8px 10px;
   border-radius: 6px;
-  background-color: var(--background-modifier-warning, var(--background-secondary));
-  color: var(--text-warning, var(--text-normal));
+  border: 1px solid var(--background-modifier-border);
+  border-left: 3px solid var(--text-warning, var(--color-orange));
+  background-color: var(--background-primary);
+  color: var(--text-normal);
   font-size: 0.85em;
+  line-height: 1.4;
 }
 
 .fns-share-expire-label {
