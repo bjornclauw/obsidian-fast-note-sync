@@ -576,6 +576,8 @@ export default {
   "setting.share.snapshot_folder_desc": "Folder where rendered snapshots are stored before sharing. It syncs to the server like a normal note.",
   "setting.share.default_mode": "Default share mode",
   "setting.share.default_mode_desc": "Which mode the share dialog selects by default.",
+  "setting.share.hide_snapshot_folder": "Hide rendered snapshot folder",
+  "setting.share.hide_snapshot_folder_desc": "Hide the generated snapshot folder in the file explorer. Snapshots still sync to the server; they are only hidden from view.",
   "setting.share.mode.source": "Source (Markdown)",
   "setting.share.mode.rendered": "Rendered (all plugins)",
   "setting.share.mode_label": "Share mode",

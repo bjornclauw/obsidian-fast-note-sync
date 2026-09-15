@@ -223,7 +223,7 @@ export class ShareModal extends Modal {
             this.activeMode = this.mode;
             this.targetPath = this.mode === "rendered" ? (this.snapshotPath || this.path) : this.path;
             showSyncNotice($("ui.share.success"));
-            void this.plugin.shareIndicatorManager?.addSharedPath(this.targetPath);
+            void this.plugin.shareIndicatorManager?.addSharedPath(this.path);
         }
         this.render();
     }
@@ -257,7 +257,7 @@ export class ShareModal extends Modal {
 
         const oldTarget = this.targetPath || this.path;
         await this.plugin.api.cancelShare(oldTarget);
-        void this.plugin.shareIndicatorManager?.removeSharedPath(oldTarget);
+        void this.plugin.shareIndicatorManager?.removeSharedPath(this.path);
 
         const expireAt = this.resolveExpireAt("keep", this.shareData?.expiresAt);
         let res: { id: number; token: string; isPassword?: boolean; shortLink?: string; baseUrl?: string; expiresAt?: string } | null = null;
@@ -275,6 +275,7 @@ export class ShareModal extends Modal {
         this.activeMode = res ? newMode : null;
         this.targetPath = res ? (newMode === "rendered" ? (this.snapshotPath || this.path) : this.path) : "";
         this.mode = newMode;
+        if (res) void this.plugin.shareIndicatorManager?.addSharedPath(this.path);
         this.loading = false;
         this.render();
     }
@@ -586,7 +587,7 @@ export class ShareModal extends Modal {
                     this.isPasswordVisible = false;
                     this.isPasswordDirty = false;
                     showSyncNotice($("ui.share.cancel_success"));
-                    void this.plugin.shareIndicatorManager?.removeSharedPath(cancelTarget);
+                    void this.plugin.shareIndicatorManager?.removeSharedPath(this.path);
                 }
                 this.render();
             });

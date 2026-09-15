@@ -575,6 +575,8 @@ export default {
   "setting.share.snapshot_folder_desc": "分享前渲染快照的存放文件夹。它会像普通笔记一样同步到服务端。",
   "setting.share.default_mode": "默认分享模式",
   "setting.share.default_mode_desc": "分享弹窗默认选择的模式。",
+  "setting.share.hide_snapshot_folder": "隐藏渲染快照文件夹",
+  "setting.share.hide_snapshot_folder_desc": "在文件浏览器中隐藏生成的快照文件夹。快照仍会同步到服务端，只是不再显示。",
   "setting.share.mode.source": "源文（Markdown）",
   "setting.share.mode.rendered": "渲染（全部插件）",
   "setting.share.mode_label": "分享模式",

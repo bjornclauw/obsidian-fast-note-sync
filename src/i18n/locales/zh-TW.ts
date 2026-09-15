@@ -575,6 +575,8 @@ export default {
   "setting.share.snapshot_folder_desc": "分享前渲染快照的存放資料夾。它會像一般筆記一樣同步到伺服器。",
   "setting.share.default_mode": "預設分享模式",
   "setting.share.default_mode_desc": "分享對話框預設選擇的模式。",
+  "setting.share.hide_snapshot_folder": "隱藏渲染快照資料夾",
+  "setting.share.hide_snapshot_folder_desc": "在檔案瀏覽器中隱藏產生的快照資料夾。快照仍會同步到伺服器，只是不再顯示。",
   "setting.share.mode.source": "原始（Markdown）",
   "setting.share.mode.rendered": "渲染（全部外掛）",
   "setting.share.mode_label": "分享模式",

@@ -3358,6 +3358,11 @@ body .suggestion-container {
   display: none;
 }
 
+/* 隐藏生成的快照文件夹 / Hide generated snapshot folder */
+.fns-hide-snapshot-folder .nav-folder[data-fns-snapshot-folder="true"] {
+  display: none;
+}
+
 .fns-preview-toast {
   top: var(--fns-toast-top-preview, 110px);
 }

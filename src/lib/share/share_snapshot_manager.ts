@@ -74,6 +74,14 @@ export class ShareSnapshotManager {
     return file instanceof TFile ? candidate : null;
   }
 
+  public getSourceForSnapshot(snapshotPath: string): string | null {
+    const normalized = normalizePath(snapshotPath);
+    for (const [source, snapshot] of this.index.entries()) {
+      if (snapshot === normalized) return source;
+    }
+    return null;
+  }
+
   public isSnapshotPath(path: string): boolean {
     const normalized = normalizePath(path);
     const folder = this.snapshotFolder;

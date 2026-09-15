@@ -575,6 +575,8 @@ export default {
   "setting.share.snapshot_folder_desc": "共有前にレンダリング済みスナップショットを保存するフォルダです。通常のノートと同様にサーバーへ同期されます。",
   "setting.share.default_mode": "既定の共有モード",
   "setting.share.default_mode_desc": "共有ダイアログで既定で選択されるモード。",
+  "setting.share.hide_snapshot_folder": "レンダリング済みスナップショットフォルダを隠す",
+  "setting.share.hide_snapshot_folder_desc": "生成されたスナップショットフォルダをファイルエクスプローラーで非表示にします。スナップショットはサーバーへ同期されますが、表示されなくなります。",
   "setting.share.mode.source": "ソース（Markdown）",
   "setting.share.mode.rendered": "レンダリング（全プラグイン）",
   "setting.share.mode_label": "共有モード",

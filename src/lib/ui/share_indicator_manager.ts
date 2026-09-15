@@ -56,6 +56,7 @@ export class ShareIndicatorManager {
 
         this.observer = new MutationObserver(() => {
             this.updateAllElements();
+            this.updateSnapshotFolderVisibility();
         });
 
         // 观察整个 body，因为文件浏览器可能会被销毁和重建
@@ -68,6 +69,29 @@ export class ShareIndicatorManager {
 
         // 初始更新
         this.updateAllElements();
+        this.updateSnapshotFolderVisibility();
+    }
+
+    // 按设置隐藏/显示生成的快照文件夹（文件浏览器中的装饰性隐藏）
+    // Hide/show the generated snapshot folder per setting (cosmetic hide in the file explorer)
+    private updateSnapshotFolderVisibility(): void {
+        const hide = this.plugin.settings.shareSnapshotHideFolder !== false;
+        activeDocument.body.toggleClass("fns-hide-snapshot-folder", hide);
+
+        const folder = this.plugin.shareSnapshotManager?.snapshotFolder;
+        activeDocument.querySelectorAll<HTMLElement>(".nav-folder-title[data-path]").forEach((titleEl) => {
+            const container = titleEl.closest<HTMLElement>(".nav-folder");
+            if (!container) return;
+            if (hide && folder && titleEl.getAttribute("data-path") === folder) {
+                container.setAttribute("data-fns-snapshot-folder", "true");
+            } else if (container.hasAttribute("data-fns-snapshot-folder")) {
+                container.removeAttribute("data-fns-snapshot-folder");
+            }
+        });
+    }
+
+    public refreshSnapshotFolderVisibility(): void {
+        this.updateSnapshotFolderVisibility();
     }
 
     private updateAllElements() {
@@ -124,10 +148,29 @@ export class ShareIndicatorManager {
     }
 
     updateSharedPaths(paths: string[]): void {
-        this.sharedPaths = new Set(paths);
-        this.plugin.settings.sharedPaths = paths;
+        const uiPaths = this.toUiPaths(paths);
+        this.sharedPaths = new Set(uiPaths);
+        this.plugin.settings.sharedPaths = uiPaths;
         void this.plugin.saveSettings();
         this.updateAllElements();
+    }
+
+    // 将服务端分享路径映射为“对用户有意义”的路径：渲染分享的快照映射回原始笔记，
+    // 这样浏览器高亮/筛选的是原始文件，而不是生成的快照。
+    // Map server share paths to user-meaningful paths: rendered snapshots map back to their
+    // source note, so the explorer highlights/filters the original file, not the snapshot.
+    private toUiPaths(paths: string[]): string[] {
+        const manager = this.plugin.shareSnapshotManager;
+        const seen = new Set<string>();
+        const result: string[] = [];
+        for (const path of paths) {
+            const mapped = manager?.getSourceForSnapshot(path) ?? path;
+            if (!seen.has(mapped)) {
+                seen.add(mapped);
+                result.push(mapped);
+            }
+        }
+        return result;
     }
 
     async syncWithServer(): Promise<void> {
@@ -142,11 +185,12 @@ export class ShareIndicatorManager {
             const paths = await this.plugin.api.getSharePaths();
             if (paths === null) return;
 
-            const newSet = new Set(paths);
-            const changed = !(this.sharedPaths.size === newSet.size && paths.every(p => this.sharedPaths.has(p)));
+            const uiPaths = this.toUiPaths(paths);
+            const newSet = new Set(uiPaths);
+            const changed = !(this.sharedPaths.size === newSet.size && uiPaths.every(p => this.sharedPaths.has(p)));
             if (changed) {
                 this.sharedPaths = newSet;
-                this.plugin.settings.sharedPaths = paths;
+                this.plugin.settings.sharedPaths = uiPaths;
                 await this.plugin.saveData(this.plugin.settings);
             }
             // 即使路径集合没变也要重新打标，避免文件树重渲染后标记丢失
@@ -158,7 +202,8 @@ export class ShareIndicatorManager {
     }
 
     async addSharedPath(path: string): Promise<void> {
-        this.sharedPaths.add(path);
+        const uiPath = this.plugin.shareSnapshotManager?.getSourceForSnapshot(path) ?? path;
+        this.sharedPaths.add(uiPath);
         this.plugin.settings.sharedPaths = Array.from(this.sharedPaths);
         await this.plugin.saveData(this.plugin.settings);
         this.updateAllElements();
@@ -166,7 +211,8 @@ export class ShareIndicatorManager {
     }
 
     async removeSharedPath(path: string): Promise<void> {
-        this.sharedPaths.delete(path);
+        const uiPath = this.plugin.shareSnapshotManager?.getSourceForSnapshot(path) ?? path;
+        this.sharedPaths.delete(uiPath);
         this.plugin.settings.sharedPaths = Array.from(this.sharedPaths);
         await this.plugin.saveData(this.plugin.settings);
         this.updateAllElements();
@@ -245,8 +291,10 @@ export class ShareIndicatorManager {
             this.observer = null;
         }
         activeDocument.body.removeClass('fns-filter-active');
+        activeDocument.body.removeClass('fns-hide-snapshot-folder');
         // 清理所有标记
         activeDocument.querySelectorAll('[data-fns-shared]').forEach(el => el.removeAttribute('data-fns-shared'));
+        activeDocument.querySelectorAll('[data-fns-snapshot-folder]').forEach(el => el.removeAttribute('data-fns-snapshot-folder'));
     }
 
     public regenerateCss(): void {

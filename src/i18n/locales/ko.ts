@@ -575,6 +575,8 @@ export default {
   "setting.share.snapshot_folder_desc": "공유 전 렌더링된 스냅샷을 저장하는 폴더입니다. 일반 노트처럼 서버에 동기화됩니다.",
   "setting.share.default_mode": "기본 공유 모드",
   "setting.share.default_mode_desc": "공유 대화상자에서 기본으로 선택되는 모드입니다.",
+  "setting.share.hide_snapshot_folder": "렌더링된 스냅샷 폴더 숨기기",
+  "setting.share.hide_snapshot_folder_desc": "생성된 스냅샷 폴더를 파일 탐색기에서 숨깁니다. 스냅샷은 계속 서버에 동기화되며 화면에서만 표시되지 않습니다.",
   "setting.share.mode.source": "소스(Markdown)",
   "setting.share.mode.rendered": "렌더링(모든 플러그인)",
   "setting.share.mode_label": "공유 모드",

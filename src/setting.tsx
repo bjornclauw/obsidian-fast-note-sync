@@ -83,6 +83,8 @@ export interface PluginSettings {
   shareSnapshotFolder: string
   /** 新建分享时默认使用的模式 */
   shareSnapshotDefaultMode: "source" | "rendered"
+  /** 是否在文件浏览器中隐藏生成的快照文件夹 */
+  shareSnapshotHideFolder: boolean
   /** 插件更新源 */
   updateSource: "github" | "cnb"
   /** 手机端状态点位置 */
@@ -166,6 +168,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   showShareIcon: true,
   shareSnapshotFolder: "_fns-shares",
   shareSnapshotDefaultMode: "source",
+  shareSnapshotHideFolder: true,
   updateSource: "github",
   mobileStatusDotPosition: "menu-bar",
   showUpgradeBadge: true,
@@ -1882,6 +1885,19 @@ export class SettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.shareSnapshotDefaultMode = value === "rendered" ? "rendered" : "source"
             await this.plugin.saveSettings()
+          })
+      )
+
+    new Setting(set)
+      .setName($("setting.share.hide_snapshot_folder"))
+      .setDesc($("setting.share.hide_snapshot_folder_desc"))
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.shareSnapshotHideFolder !== false)
+          .onChange(async (value) => {
+            this.plugin.settings.shareSnapshotHideFolder = value
+            await this.plugin.saveSettings()
+            this.plugin.shareIndicatorManager?.refreshSnapshotFolderVisibility()
           })
       )
   }
