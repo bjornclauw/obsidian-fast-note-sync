@@ -4034,6 +4034,19 @@ body .suggestion-container {
   margin-top: 4px;
 }
 
+/* 渲染快照过期提示 / Rendered snapshot stale banner */
+.fns-share-stale-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background-color: var(--background-modifier-warning, var(--background-secondary));
+  color: var(--text-warning, var(--text-normal));
+  font-size: 0.85em;
+}
+
 .fns-share-expire-label {
   font-size: 0.85em;
   color: var(--text-muted);

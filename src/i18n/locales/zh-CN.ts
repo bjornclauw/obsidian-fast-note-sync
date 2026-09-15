@@ -577,4 +577,10 @@ export default {
   "setting.share.default_mode_desc": "分享弹窗默认选择的模式。",
   "setting.share.mode.source": "源文（Markdown）",
   "setting.share.mode.rendered": "渲染（全部插件）",
+  "setting.share.mode_label": "分享模式",
+  "ui.share.rendered_unavailable": "无法使用渲染分享（快照管理器或笔记不存在）。",
+  "ui.share.rendered_partial": "以下插件内容未能渲染：${langs}",
+  "ui.share.snapshot_stale": "源笔记在渲染后已发生变化。",
+  "ui.share.snapshot_missing": "渲染快照已丢失。",
+  "ui.share.rebuild": "重新渲染",
 };

@@ -577,4 +577,10 @@ export default {
   "setting.share.default_mode_desc": "공유 대화상자에서 기본으로 선택되는 모드입니다.",
   "setting.share.mode.source": "소스(Markdown)",
   "setting.share.mode.rendered": "렌더링(모든 플러그인)",
+  "setting.share.mode_label": "공유 모드",
+  "ui.share.rendered_unavailable": "렌더링 공유를 사용할 수 없습니다(스냅샷 관리자 또는 노트를 찾을 수 없음).",
+  "ui.share.rendered_partial": "일부 플러그인 블록을 렌더링하지 못했습니다: ${langs}",
+  "ui.share.snapshot_stale": "렌더링된 이후 소스 노트가 변경되었습니다.",
+  "ui.share.snapshot_missing": "렌더링된 스냅샷이 없습니다.",
+  "ui.share.rebuild": "다시 렌더링",
 };

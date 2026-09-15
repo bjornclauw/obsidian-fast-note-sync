@@ -577,4 +577,10 @@ export default {
   "setting.share.default_mode_desc": "共有ダイアログで既定で選択されるモード。",
   "setting.share.mode.source": "ソース（Markdown）",
   "setting.share.mode.rendered": "レンダリング（全プラグイン）",
+  "setting.share.mode_label": "共有モード",
+  "ui.share.rendered_unavailable": "レンダリング共有を利用できません（スナップショットマネージャーまたはノートが見つかりません）。",
+  "ui.share.rendered_partial": "一部のプラグインブロックをレンダリングできませんでした: ${langs}",
+  "ui.share.snapshot_stale": "レンダリング後にソースノートが変更されています。",
+  "ui.share.snapshot_missing": "レンダリング済みスナップショットが見つかりません。",
+  "ui.share.rebuild": "再レンダリング",
 };

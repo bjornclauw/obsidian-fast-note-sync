@@ -578,4 +578,10 @@ export default {
   "setting.share.default_mode_desc": "Which mode the share dialog selects by default.",
   "setting.share.mode.source": "Source (Markdown)",
   "setting.share.mode.rendered": "Rendered (all plugins)",
+  "setting.share.mode_label": "Share mode",
+  "ui.share.rendered_unavailable": "Rendered share is unavailable (snapshot manager or note not found).",
+  "ui.share.rendered_partial": "Some plugin blocks could not be rendered: ${langs}",
+  "ui.share.snapshot_stale": "The source note changed since this snapshot was rendered.",
+  "ui.share.snapshot_missing": "The rendered snapshot is missing.",
+  "ui.share.rebuild": "Rebuild",
 };

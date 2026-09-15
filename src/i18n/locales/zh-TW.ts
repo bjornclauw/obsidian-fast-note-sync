@@ -577,4 +577,10 @@ export default {
   "setting.share.default_mode_desc": "分享對話框預設選擇的模式。",
   "setting.share.mode.source": "原始（Markdown）",
   "setting.share.mode.rendered": "渲染（全部外掛）",
+  "setting.share.mode_label": "分享模式",
+  "ui.share.rendered_unavailable": "無法使用渲染分享（快照管理器或筆記不存在）。",
+  "ui.share.rendered_partial": "以下外掛內容未能渲染：${langs}",
+  "ui.share.snapshot_stale": "來源筆記在渲染後已發生變更。",
+  "ui.share.snapshot_missing": "渲染快照已遺失。",
+  "ui.share.rebuild": "重新渲染",
 };

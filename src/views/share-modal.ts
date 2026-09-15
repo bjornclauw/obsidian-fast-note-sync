@@ -1,8 +1,10 @@
-import { App, Modal, setIcon, ButtonComponent, setTooltip } from "obsidian";
+import { App, Modal, setIcon, ButtonComponent, setTooltip, TFile } from "obsidian";
 import type FastSync from "../main";
 import { $ } from "../i18n/lang";
-import { showSyncNotice } from "../lib/utils/helpers";
+import { dump, showSyncNotice } from "../lib/utils/helpers";
 import { ConfirmModal } from "./confirm-modal";
+import { waitForNoteSynced } from "../lib/sync/note_sync_waiter";
+import type { SnapshotStaleStatus } from "../lib/share/share_snapshot_manager";
 
 // 过期选项对应的秒数（1 天 / 7 天 / 30 天），"never" 表示永久，"keep" 表示编辑时保持现有有效期不变
 const EXPIRE_DURATIONS: Record<string, number> = {
@@ -16,6 +18,11 @@ export class ShareModal extends Modal {
     private path: string;
     private loading: boolean = false;
     private shareData: { id: number, token: string, isPassword?: boolean, shortLink?: string, baseUrl?: string, expiresAt?: string } | null = null;
+    private mode: "source" | "rendered" = "source";
+    private activeMode: "source" | "rendered" | null = null;
+    private targetPath: string = "";
+    private snapshotPath: string | null = null;
+    private stale: SnapshotStaleStatus = "missing";
 
     // 密码状态相关
     private isPasswordVisible: boolean = false;
@@ -44,8 +51,35 @@ export class ShareModal extends Modal {
         }
         this.loading = true;
         this.render();
-        const res = await this.plugin.api.getShare(this.path);
-        this.shareData = res;
+
+        const manager = this.plugin.shareSnapshotManager;
+        const sourceFile = this.app.vault.getAbstractFileByPath(this.path);
+        const snapshotPath = manager?.getSnapshotPath(this.path) ?? null;
+        this.snapshotPath = snapshotPath;
+
+        const sourceShare = await this.plugin.api.getShare(this.path);
+        if (sourceShare) {
+            this.shareData = sourceShare;
+            this.activeMode = "source";
+            this.targetPath = this.path;
+        } else if (snapshotPath) {
+            const snapshotShare = await this.plugin.api.getShare(snapshotPath);
+            this.shareData = snapshotShare;
+            this.activeMode = snapshotShare ? "rendered" : null;
+            this.targetPath = snapshotShare ? snapshotPath : "";
+        } else {
+            this.shareData = null;
+            this.activeMode = null;
+            this.targetPath = "";
+        }
+
+        if (snapshotPath && sourceFile instanceof TFile && manager) {
+            this.stale = (await manager.checkStale(sourceFile)).status;
+        } else {
+            this.stale = "missing";
+        }
+
+        this.mode = this.activeMode ?? (this.plugin.settings.shareSnapshotDefaultMode || "source");
         this.loading = false;
         this.isPasswordDirty = false;
         this.render();
@@ -132,6 +166,22 @@ export class ShareModal extends Modal {
 
         emptyState.createDiv({ text: $("ui.share.not_shared_yet"), cls: "fns-empty-text" });
 
+        // 分享模式选择 / Share mode select (source markdown vs rendered snapshot)
+        const modeGroup = emptyState.createDiv("fns-share-expire-select-group");
+        modeGroup.createSpan({ text: $("setting.share.mode_label"), cls: "fns-share-expire-label" });
+        const modeSelect = modeGroup.createEl("select", { cls: "fns-share-expire-select" });
+        const modeOptions: [string, string][] = [
+            ["source", $("setting.share.mode.source")],
+            ["rendered", $("setting.share.mode.rendered")],
+        ];
+        for (const [value, label] of modeOptions) {
+            const opt = modeSelect.createEl("option", { text: label, value });
+            if (value === this.mode) opt.selected = true;
+        }
+        modeSelect.addEventListener("change", () => {
+            this.mode = modeSelect.value === "rendered" ? "rendered" : "source";
+        });
+
         // 过期时间选择（创建前）
         const expireGroup = emptyState.createDiv("fns-share-expire-select-group");
         expireGroup.createSpan({ text: $("ui.share.expire.label"), cls: "fns-share-expire-label" });
@@ -155,19 +205,92 @@ export class ShareModal extends Modal {
             .setCta()
             .setDisabled(this.loading)
             .onClick(async () => {
-                this.loading = true;
-                this.render();
-                const expireAt = this.resolveExpireAt(this.expireCreateValue);
-                const res = await this.plugin.api.createShare(this.path, expireAt);
-                this.loading = false;
-                if (res) {
-                    this.shareData = res;
-                    showSyncNotice($("ui.share.success"));
-                    void this.plugin.shareIndicatorManager?.addSharedPath(this.path);
-                }
-                this.render();
+                await this.doCreate();
             });
         btn.buttonEl.addClass("fns-share-create-btn");
+    }
+
+    private async doCreate() {
+        this.loading = true;
+        this.render();
+        const expireAt = this.resolveExpireAt(this.expireCreateValue);
+        const res = this.mode === "rendered"
+            ? await this.createRenderedShare(expireAt)
+            : await this.plugin.api.createShare(this.path, expireAt);
+        this.loading = false;
+        if (res) {
+            this.shareData = res;
+            this.activeMode = this.mode;
+            this.targetPath = this.mode === "rendered" ? (this.snapshotPath || this.path) : this.path;
+            showSyncNotice($("ui.share.success"));
+            void this.plugin.shareIndicatorManager?.addSharedPath(this.targetPath);
+        }
+        this.render();
+    }
+
+    private async createRenderedShare(expireAt: number) {
+        const manager = this.plugin.shareSnapshotManager;
+        const sourceFile = this.app.vault.getAbstractFileByPath(this.path);
+        if (!manager || !(sourceFile instanceof TFile)) {
+            showSyncNotice($("ui.share.rendered_unavailable"));
+            return null;
+        }
+        const { snapshotPath, render } = await manager.bake(sourceFile);
+        this.snapshotPath = snapshotPath;
+        if (render.timedOut) dump(`ShareModal: render settle timed out for ${this.path}`);
+        if (render.unrenderable.length > 0) {
+            showSyncNotice($("ui.share.rendered_partial", { langs: render.unrenderable.join(", ") }));
+        }
+        await waitForNoteSynced(snapshotPath, 8000);
+        this.stale = "none";
+        return await this.plugin.api.createShare(snapshotPath, expireAt);
+    }
+
+    private async switchMode(newMode: "source" | "rendered") {
+        if (newMode === this.activeMode) {
+            this.mode = newMode;
+            this.render();
+            return;
+        }
+        this.loading = true;
+        this.render();
+
+        const oldTarget = this.targetPath || this.path;
+        await this.plugin.api.cancelShare(oldTarget);
+        void this.plugin.shareIndicatorManager?.removeSharedPath(oldTarget);
+
+        const expireAt = this.resolveExpireAt("keep", this.shareData?.expiresAt);
+        let res: { id: number; token: string; isPassword?: boolean; shortLink?: string; baseUrl?: string; expiresAt?: string } | null = null;
+        if (newMode === "rendered") {
+            res = await this.createRenderedShare(expireAt);
+        } else {
+            res = await this.plugin.api.createShare(this.path, expireAt);
+            if (this.snapshotPath) {
+                await this.plugin.shareSnapshotManager?.deleteSnapshot(this.snapshotPath);
+                this.snapshotPath = null;
+            }
+        }
+
+        this.shareData = res;
+        this.activeMode = res ? newMode : null;
+        this.targetPath = res ? (newMode === "rendered" ? (this.snapshotPath || this.path) : this.path) : "";
+        this.mode = newMode;
+        this.loading = false;
+        this.render();
+    }
+
+    private async rebuildSnapshot() {
+        const manager = this.plugin.shareSnapshotManager;
+        const sourceFile = this.app.vault.getAbstractFileByPath(this.path);
+        if (!manager || !(sourceFile instanceof TFile)) return;
+        this.loading = true;
+        this.render();
+        const { snapshotPath } = await manager.bake(sourceFile);
+        this.snapshotPath = snapshotPath;
+        await waitForNoteSynced(snapshotPath, 8000);
+        this.stale = "none";
+        this.loading = false;
+        this.render();
     }
 
     private renderShareResult(parent: HTMLElement) {
@@ -175,6 +298,42 @@ export class ShareModal extends Modal {
         
         // 创建统一的主卡片容器 / Create a single main card container
         const mainCard = resultContainer.createDiv("fns-share-card");
+
+        // --- 0. 分享模式部分 (Mode Section) ---
+        const modeSection = mainCard.createDiv("fns-share-section");
+        const modeHeader = modeSection.createDiv("fns-share-card-header");
+        setIcon(modeHeader.createSpan("fns-header-icon"), "layout-template");
+        modeHeader.createSpan({ text: $("setting.share.mode_label"), cls: "fns-header-title" });
+
+        const modeActionGroup = modeSection.createDiv("fns-share-input-group");
+        const editModeSelect = modeActionGroup.createEl("select", { cls: "fns-share-expire-select" });
+        const editModeOptions: [string, string][] = [
+            ["source", $("setting.share.mode.source")],
+            ["rendered", $("setting.share.mode.rendered")],
+        ];
+        for (const [value, label] of editModeOptions) {
+            const opt = editModeSelect.createEl("option", { text: label, value });
+            if (value === this.activeMode) opt.selected = true;
+        }
+        editModeSelect.disabled = this.loading;
+        editModeSelect.addEventListener("change", () => {
+            void this.switchMode(editModeSelect.value === "rendered" ? "rendered" : "source");
+        });
+
+        if (this.activeMode === "rendered" && this.stale !== "none") {
+            const banner = modeSection.createDiv("fns-share-stale-banner");
+            banner.createSpan({
+                text: this.stale === "missing" ? $("ui.share.snapshot_missing") : $("ui.share.snapshot_stale"),
+            });
+            const rebuildBtn = new ButtonComponent(banner)
+                .setButtonText($("ui.share.rebuild"))
+                .setCta()
+                .setDisabled(this.loading)
+                .onClick(() => {
+                    void this.rebuildSnapshot();
+                });
+            rebuildBtn.buttonEl.addClass("fns-share-create-btn");
+        }
 
         // --- 1. 分享链接部分 (Link Section) ---
         const linkSection = mainCard.createDiv("fns-share-section");
@@ -409,15 +568,25 @@ export class ShareModal extends Modal {
             .onClick(async () => {
                 this.loading = true;
                 this.render();
-                const success = await this.plugin.api.cancelShare(this.path);
+                const cancelTarget = this.targetPath || this.path;
+                const wasRendered = this.activeMode === "rendered";
+                const success = await this.plugin.api.cancelShare(cancelTarget);
                 this.loading = false;
                 if (success) {
+                    if (wasRendered && this.snapshotPath) {
+                        await this.plugin.shareSnapshotManager?.deleteSnapshot(this.snapshotPath);
+                    }
                     this.shareData = null;
+                    this.activeMode = null;
+                    this.targetPath = "";
+                    this.snapshotPath = null;
+                    this.stale = "missing";
+                    this.mode = this.plugin.settings.shareSnapshotDefaultMode || "source";
                     this.passwordValue = "";
                     this.isPasswordVisible = false;
                     this.isPasswordDirty = false;
                     showSyncNotice($("ui.share.cancel_success"));
-                    void this.plugin.shareIndicatorManager?.removeSharedPath(this.path);
+                    void this.plugin.shareIndicatorManager?.removeSharedPath(cancelTarget);
                 }
                 this.render();
             });
