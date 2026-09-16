@@ -1,7 +1,7 @@
 import { parseYaml, stringifyYaml } from "obsidian";
 
 export const SNAPSHOT_MARKER_KEY = "fns-share-snapshot";
-export const SNAPSHOT_RENDER_VERSION = 9;
+export const SNAPSHOT_RENDER_VERSION = 10;
 
 export const THEME_CSS_FILENAME = "_fns-theme.css";
 export const SNAPSHOT_HTML_LANG = "fns-rendered";

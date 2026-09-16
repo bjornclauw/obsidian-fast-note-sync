@@ -184,7 +184,13 @@ export class NoteRenderer {
       let share = cache.get(path);
       if (share === undefined) {
         try {
+          // The target may be shared as "source" (share on the note path) or as a rendered
+          // snapshot (share on the snapshot path) — check both.
           share = await this.plugin.api.getShare(path);
+          if (!share) {
+            const snapshotPath = this.plugin.shareSnapshotManager?.getSnapshotPath(path);
+            if (snapshotPath) share = await this.plugin.api.getShare(snapshotPath);
+          }
         } catch (e) {
           dumpError("ShareSnapshot: failed to resolve share for internal link", path, e);
           share = null;
