@@ -88,7 +88,24 @@ export class NoteRenderer {
         // inaccessible (cross-origin) sheet
       }
     }
-    return parts.join("\n");
+    const cssText = parts.join("\n");
+    // The viewer renders this in a shadow root where :root/body selectors don't apply, so bake the
+    // resolved custom properties explicitly onto the note root.
+    return this.buildResolvedVariables(cssText) + "\n" + cssText;
+  }
+
+  private buildResolvedVariables(cssText: string): string {
+    const names = new Set<string>();
+    const re = /(--[a-zA-Z0-9_-]+)\s*:/g;
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(cssText)) !== null) names.add(match[1]);
+    const computed = getComputedStyle(document.body);
+    const decls: string[] = [];
+    for (const name of names) {
+      const value = computed.getPropertyValue(name).trim();
+      if (value) decls.push(`${name}:${value};`);
+    }
+    return `.fns-rendered-root{${decls.join("")}}`;
   }
 
   private detectBodyClasses(): string {
