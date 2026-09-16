@@ -33,10 +33,25 @@ export class NoteRenderer {
     component.load();
 
     let timedOut = false;
+    let html = "";
+    let css = "";
+    let bodyClass = "";
+    let unrenderable: string[] = [];
+
     try {
       await MarkdownRenderer.render(app, source, container, file.path, component);
       timedOut = await this.settle(container);
       this.rewriteResourceUrls(container);
+
+      // IMPORTANT: capture BEFORE component.unload(). Plugins that register their widget via
+      // ctx.addChild (e.g. card-grid) wipe their DOM in onunload -> destroy() -> container.empty(),
+      // so serializing after unload yields an emptied shell.
+      html = this.wrapPreview(container.innerHTML);
+      css = this.collectDocumentCss();
+      bodyClass = this.detectBodyClasses();
+      unrenderable = PLUGIN_OWNED_LANGUAGES.filter((lang) =>
+        container.querySelector(`code.language-${lang}`) !== null,
+      );
     } catch (e) {
       dumpError("ShareSnapshot: failed to render note", file.path, e);
     } finally {
@@ -47,16 +62,10 @@ export class NoteRenderer {
       }
     }
 
-    const unrenderable = PLUGIN_OWNED_LANGUAGES.filter((lang) =>
-      container.querySelector(`code.language-${lang}`) !== null,
-    );
     if (unrenderable.length > 0) {
       dump(`ShareSnapshot: unrendered plugin blocks in ${file.path}: ${unrenderable.join(", ")}`);
     }
 
-    const html = this.wrapPreview(container.innerHTML);
-    const css = this.collectDocumentCss();
-    const bodyClass = this.detectBodyClasses();
     return { html, css, bodyClass, timedOut, unrenderable };
   }
 

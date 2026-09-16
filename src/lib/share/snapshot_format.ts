@@ -1,7 +1,7 @@
 import { parseYaml, stringifyYaml } from "obsidian";
 
 export const SNAPSHOT_MARKER_KEY = "fns-share-snapshot";
-export const SNAPSHOT_RENDER_VERSION = 3;
+export const SNAPSHOT_RENDER_VERSION = 4;
 export const SNAPSHOT_HTML_LANG = "fns-rendered";
 // 4-backtick fence so any ``` run inside the baked HTML can never close the block early.
 export const SNAPSHOT_FENCE = "````";
