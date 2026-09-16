@@ -181,6 +181,9 @@ export class NoteRenderer {
       if (!dest) continue;
 
       const path = dest.path;
+      // Tag the anchor with the target note path so the server can resolve it to the target's
+      // share URL at serve time (dynamic: publishing a target needs no re-bake of this page).
+      a.setAttribute("data-fns-link", path);
       let share = cache.get(path);
       if (share === undefined) {
         try {
