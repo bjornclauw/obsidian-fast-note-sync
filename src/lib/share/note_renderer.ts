@@ -13,30 +13,6 @@ const SETTLE_TIMEOUT_MS = 5000;
 // code element after settling, the plugin is missing/failed and the snapshot will not show it.
 const PLUGIN_OWNED_LANGUAGES = ["dataview", "dataviewjs", "excalidraw", "chart"];
 
-const MAX_INLINE_BYTES = 8 * 1024 * 1024;
-
-const MIME_BY_EXT: Record<string, string> = {
-  svg: "image/svg+xml", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
-  gif: "image/gif", webp: "image/webp", avif: "image/avif", bmp: "image/bmp", ico: "image/x-icon",
-  mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime", m4v: "video/x-m4v",
-  mp3: "audio/mpeg", m4a: "audio/mp4", wav: "audio/wav", ogg: "audio/ogg", oga: "audio/ogg", flac: "audio/flac",
-  pdf: "application/pdf",
-};
-
-function mimeForPath(path: string): string {
-  const ext = path.split(".").pop()?.toLowerCase() ?? "";
-  return MIME_BY_EXT[ext] ?? "application/octet-stream";
-}
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
-}
-
 export interface NoteRenderResult {
   html: string;
   css: string;
@@ -153,37 +129,18 @@ export class NoteRenderer {
     });
   }
 
-  // Make media self-contained: inline attachment bytes as data URIs so images/videos show on the
-  // share page without depending on server file-scope rules. Oversized files fall back to the
-  // data-fns-src token (which the viewer may resolve via its file API).
+  // Replace Obsidian-local resource URLs (app://, file://, absolute paths) with a stable
+  // vault-relative token the share viewer can resolve. We move the path into `data-fns-src` and
+  // drop `src` so the browser never tries to load an unresolvable app:// URL.
   private async inlineResources(container: HTMLElement): Promise<void> {
-    const media = Array.from(container.querySelectorAll<HTMLElement>("img, video, audio, source"));
-    for (const el of media) {
+    container.querySelectorAll<HTMLElement>("img, video, audio, source").forEach((el) => {
       const raw = el.getAttribute("src");
-      if (!raw || /^(data:|https?:|blob:)/i.test(raw)) continue;
-      const vaultPath = this.resolveResourceToVaultPath(raw) ?? raw;
-      const file = this.plugin.app.vault.getAbstractFileByPath(normalizePath(vaultPath));
-      if (!(file instanceof TFile)) {
-        el.setAttribute("data-fns-src", vaultPath);
-        el.removeAttribute("src");
-        continue;
-      }
-      try {
-        const buffer = await this.plugin.app.vault.readBinary(file);
-        if (buffer.byteLength > MAX_INLINE_BYTES) {
-          el.setAttribute("data-fns-src", vaultPath);
-          el.removeAttribute("src");
-          continue;
-        }
-        const mime = mimeForPath(vaultPath);
-        el.setAttribute("src", `data:${mime};base64,${bytesToBase64(new Uint8Array(buffer))}`);
-        el.removeAttribute("data-fns-src");
-      } catch (e) {
-        dumpError("ShareSnapshot: failed to inline resource", vaultPath, e);
-        el.setAttribute("data-fns-src", vaultPath);
-        el.removeAttribute("src");
-      }
-    }
+      if (!raw) return;
+      const vaultPath = this.resolveResourceToVaultPath(raw);
+      if (!vaultPath) return;
+      el.setAttribute("data-fns-src", vaultPath);
+      el.removeAttribute("src");
+    });
     container.querySelectorAll<HTMLElement>("[srcset]").forEach((el) => el.removeAttribute("srcset"));
   }
 
