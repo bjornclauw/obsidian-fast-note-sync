@@ -104,12 +104,16 @@ export class ShareSnapshotManager {
       generated: Date.now(),
     };
 
-    const payload = JSON.stringify({
+    // The fence content must be opaque: markdown/HTML processing would otherwise mangle a raw
+    // JSON blob (quotes, `==`, `<`, `#`). We gzip the JSON and base64url-encode it so the fence
+    // is a single token of [A-Za-z0-9_-].
+    const inner = JSON.stringify({
       v: SNAPSHOT_RENDER_VERSION,
       body: render.bodyClass,
       css: this.gzipBase64(render.css),
       html: render.html,
     });
+    const payload = this.base64Url(gzipSync(strToU8(inner)));
     const snapshotContent = buildSnapshotContent(meta, payload);
     await this.ensureFolder();
     const snapshotPath = this.snapshotPathFor(file.path);
@@ -274,7 +278,14 @@ export class ShareSnapshotManager {
   }
 
   private gzipBase64(input: string): string {
-    const bytes = gzipSync(strToU8(input));
+    return this.toBase64(gzipSync(strToU8(input)));
+  }
+
+  private base64Url(bytes: Uint8Array): string {
+    return this.toBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  private toBase64(bytes: Uint8Array): string {
     let binary = "";
     const chunk = 0x8000;
     for (let i = 0; i < bytes.length; i += chunk) {
