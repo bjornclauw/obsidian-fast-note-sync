@@ -522,7 +522,7 @@ export class ShareModal extends Modal {
             refreshBtn.buttonEl.addClass("fns-share-icon-btn");
             refreshBtn.onClick(async () => {
                 refreshBtn.setDisabled(true);
-                const newShortLink = await this.plugin.api.createShortLink(this.path, true, shareUrl);
+                const newShortLink = await this.plugin.api.createShortLink(this.targetPath || this.path, true, shareUrl);
                 if (newShortLink) {
                     this.shareData!.shortLink = newShortLink;
                     this.render();
@@ -548,7 +548,7 @@ export class ShareModal extends Modal {
             createShortBtn.onClick(async () => {
                 this.loading = true;
                 this.render();
-                const shortLink = await this.plugin.api.createShortLink(this.path, false, shareUrl);
+                const shortLink = await this.plugin.api.createShortLink(this.targetPath || this.path, false, shareUrl);
                 this.loading = false;
                 if (shortLink) {
                     this.shareData!.shortLink = shortLink;
