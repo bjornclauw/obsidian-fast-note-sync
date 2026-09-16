@@ -420,7 +420,7 @@ export class ShareModal extends Modal {
             this.loading = true;
             this.render();
             const expireAt = this.resolveExpireAt(this.expireEditValue, this.shareData?.expiresAt);
-            const success = await this.plugin.api.updateSharePassword(this.path, this.passwordValue, expireAt);
+            const success = await this.plugin.api.updateSharePassword(this.targetPath || this.path, this.passwordValue, expireAt);
             this.loading = false;
             if (success) {
                 showSyncNotice($("ui.common.saveSuccess"));
