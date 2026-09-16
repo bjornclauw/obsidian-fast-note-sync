@@ -111,9 +111,11 @@ export class ShareSnapshotManager {
       v: SNAPSHOT_RENDER_VERSION,
       body: render.bodyClass,
       css: this.gzipBase64(render.css),
-      html: render.html,
     });
-    const payload = this.base64Url(gzipSync(strToU8(inner)));
+    const metaToken = this.base64Url(gzipSync(strToU8(inner)));
+    // Meta (body + theme CSS) is opaque (base64url) so markdown can't touch it; the HTML that
+    // follows is plain text so the server's share scanner can see and rewrite media refs.
+    const payload = `${metaToken}\n${render.html}`;
     const snapshotContent = buildSnapshotContent(meta, payload);
     await this.ensureFolder();
     const snapshotPath = this.snapshotPathFor(file.path);

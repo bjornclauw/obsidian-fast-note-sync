@@ -129,17 +129,18 @@ export class NoteRenderer {
     });
   }
 
-  // Replace Obsidian-local resource URLs (app://, file://, absolute paths) with a stable
-  // vault-relative token the share viewer can resolve. We move the path into `data-fns-src` and
-  // drop `src` so the browser never tries to load an unresolvable app:// URL.
+  // Rewrite Obsidian-local resource URLs (app://, file://, absolute paths) to vault-relative
+  // paths. The path is left in `src` on purpose: when the snapshot note is served as a share, the
+  // server scans the content for <img src>/<video src>/... and rewrites them to authorized
+  // /api/share/file URLs, adding the files to the share. (The viewer cannot mint those URLs.)
   private async inlineResources(container: HTMLElement): Promise<void> {
     container.querySelectorAll<HTMLElement>("img, video, audio, source").forEach((el) => {
       const raw = el.getAttribute("src");
-      if (!raw) return;
+      if (!raw || /^(data:|https?:|blob:)/i.test(raw)) return;
       const vaultPath = this.resolveResourceToVaultPath(raw);
       if (!vaultPath) return;
-      el.setAttribute("data-fns-src", vaultPath);
-      el.removeAttribute("src");
+      el.setAttribute("src", vaultPath);
+      el.removeAttribute("data-fns-src");
     });
     container.querySelectorAll<HTMLElement>("[srcset]").forEach((el) => el.removeAttribute("srcset"));
   }
