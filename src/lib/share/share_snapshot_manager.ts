@@ -1,16 +1,16 @@
 import { normalizePath, TAbstractFile, TFile } from "obsidian";
-import { gzipSync, strToU8 } from "fflate";
 
 import type FastSync from "../../main";
 import { dump, dumpError, hashContent, hashContentAsync } from "../utils/helpers";
 import { NoteRenderResult, NoteRenderer } from "./note_renderer";
 import {
-  buildSnapshotContent,
+  buildDocumentContent,
   isSnapshotFrontmatter,
   parseFrontmatterBlock,
   parseSnapshotMeta,
   SNAPSHOT_RENDER_VERSION,
   SnapshotMeta,
+  THEME_CSS_FILENAME,
 } from "./snapshot_format";
 
 export type SnapshotStaleStatus = "none" | "missing" | "changed" | "format";
@@ -104,20 +104,15 @@ export class ShareSnapshotManager {
       generated: Date.now(),
     };
 
-    // The fence content must be opaque: markdown/HTML processing would otherwise mangle a raw
-    // JSON blob (quotes, `==`, `<`, `#`). We gzip the JSON and base64url-encode it so the fence
-    // is a single token of [A-Za-z0-9_-].
-    const inner = JSON.stringify({
-      v: SNAPSHOT_RENDER_VERSION,
-      body: render.bodyClass,
-      css: this.gzipBase64(render.css),
-    });
-    const metaToken = this.base64Url(gzipSync(strToU8(inner)));
-    // Meta (body + theme CSS) is opaque (base64url) so markdown can't touch it; the HTML that
-    // follows is plain text so the server's share scanner can see and rewrite media refs.
-    const payload = `${metaToken}\n${render.html}`;
-    const snapshotContent = buildSnapshotContent(meta, payload);
     await this.ensureFolder();
+    // Shared, de-duplicated theme CSS (referenced by every rendered page; refreshed on theme change).
+    const themeCssPath = normalizePath(`${this.snapshotFolder}/${THEME_CSS_FILENAME}`);
+    await this.writeThemeCss(themeCssPath, render.css);
+
+    const document = `<!doctype html>\n<html>\n<head><meta charset="utf-8">`
+      + `<link rel="stylesheet" href="${themeCssPath}"></head>\n`
+      + `<body class="${render.bodyClass}">\n${render.html}\n</body>\n</html>`;
+    const snapshotContent = buildDocumentContent(meta, document);
     const snapshotPath = this.snapshotPathFor(file.path);
 
     const existing = this.plugin.app.vault.getAbstractFileByPath(snapshotPath);
@@ -279,21 +274,17 @@ export class ShareSnapshotManager {
     }
   }
 
-  private gzipBase64(input: string): string {
-    return this.toBase64(gzipSync(strToU8(input)));
-  }
-
-  private base64Url(bytes: Uint8Array): string {
-    return this.toBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-  }
-
-  private toBase64(bytes: Uint8Array): string {
-    let binary = "";
-    const chunk = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunk) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  // Write the shared theme CSS only when it changed, so every rendered page references one file
+  // (refreshed automatically on theme/app/plugin style changes).
+  private async writeThemeCss(path: string, css: string): Promise<void> {
+    const existing = this.plugin.app.vault.getAbstractFileByPath(path);
+    if (existing instanceof TFile) {
+      const current = await this.plugin.app.vault.read(existing);
+      if (current === css) return;
+      await this.plugin.app.vault.modify(existing, css);
+      return;
     }
-    return btoa(binary);
+    await this.plugin.app.vault.create(path, css);
   }
 
   private async ensureFolder(): Promise<void> {

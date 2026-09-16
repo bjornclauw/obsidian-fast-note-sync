@@ -42,6 +42,7 @@ export class NoteRenderer {
       await MarkdownRenderer.render(app, source, container, file.path, component);
       timedOut = await this.settle(container);
       await this.inlineResources(container);
+      await this.resolveInternalLinks(container, file.path);
 
       // IMPORTANT: capture BEFORE component.unload(). Plugins that register their widget via
       // ctx.addChild (e.g. card-grid) wipe their DOM in onunload -> destroy() -> container.empty(),
@@ -143,6 +144,43 @@ export class NoteRenderer {
       el.removeAttribute("data-fns-src");
     });
     container.querySelectorAll<HTMLElement>("[srcset]").forEach((el) => el.removeAttribute("srcset"));
+  }
+
+  // Rewrite internal note links to the target note's share URL when that note is also shared, so
+  // published pages can navigate to each other. External links and anchors are left untouched.
+  private async resolveInternalLinks(container: HTMLElement, sourcePath: string): Promise<void> {
+    const anchors = Array.from(container.querySelectorAll<HTMLAnchorElement>("a"));
+    if (anchors.length === 0) return;
+    const base = (this.plugin.runApi || this.plugin.settings.api || "").replace(/\/+$/, "");
+    if (!base) return;
+
+    const cache = new Map<string, { id: number; token: string; baseUrl?: string } | null>();
+    for (const a of anchors) {
+      const target = a.getAttribute("data-href") || a.getAttribute("href") || "";
+      if (!target || /^(?:https?:|mailto:|tel:|#)/i.test(target)) continue;
+
+      const [linkPath, anchor] = target.split("#");
+      const dest = this.plugin.app.metadataCache.getFirstLinkpathDest(linkPath, sourcePath);
+      if (!dest) continue;
+
+      const path = dest.path;
+      let share = cache.get(path);
+      if (share === undefined) {
+        try {
+          share = await this.plugin.api.getShare(path);
+        } catch (e) {
+          dumpError("ShareSnapshot: failed to resolve share for internal link", path, e);
+          share = null;
+        }
+        cache.set(path, share);
+      }
+      if (!share) continue;
+
+      const shareBase = (share.baseUrl || base).replace(/\/+$/, "");
+      a.setAttribute("href", `${shareBase}/share/${share.id}/${share.token}${anchor ? "#" + anchor : ""}`);
+      a.removeAttribute("data-href");
+      a.classList.remove("is-unresolved");
+    }
   }
 
   private resolveResourceToVaultPath(url: string): string | null {

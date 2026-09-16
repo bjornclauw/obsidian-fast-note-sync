@@ -1,7 +1,9 @@
 import { parseYaml, stringifyYaml } from "obsidian";
 
 export const SNAPSHOT_MARKER_KEY = "fns-share-snapshot";
-export const SNAPSHOT_RENDER_VERSION = 7;
+export const SNAPSHOT_RENDER_VERSION = 8;
+
+export const THEME_CSS_FILENAME = "_fns-theme.css";
 export const SNAPSHOT_HTML_LANG = "fns-rendered";
 // 4-backtick fence so any ``` run inside the baked HTML can never close the block early.
 export const SNAPSHOT_FENCE = "````";
@@ -29,6 +31,23 @@ export function buildSnapshotContent(meta: SnapshotMeta, payload: string): strin
   });
   const fmBlock = frontmatter.endsWith("\n") ? frontmatter : frontmatter + "\n";
   return `---\n${fmBlock}---\n\n${SNAPSHOT_FENCE}${SNAPSHOT_HTML_LANG}\n${payload}\n${SNAPSHOT_FENCE}\n`;
+}
+
+// v8: the note body is a full standalone HTML document (served directly by the server), so there
+// is no fenced payload anymore.
+export function buildDocumentContent(meta: SnapshotMeta, document: string): string {
+  const frontmatter = stringifyYaml({
+    [SNAPSHOT_MARKER_KEY]: 1,
+    "fns-source": meta.source,
+    "fns-source-mtime": meta.sourceMtime,
+    "fns-source-size": meta.sourceSize,
+    "fns-source-hash": meta.sourceHash,
+    "fns-render-version": meta.renderVersion,
+    "fns-plugin-version": meta.pluginVersion,
+    "fns-generated": meta.generated,
+  });
+  const fmBlock = frontmatter.endsWith("\n") ? frontmatter : frontmatter + "\n";
+  return `---\n${fmBlock}---\n\n${document}\n`;
 }
 
 export function isSnapshotFrontmatter(frontmatter: Record<string, unknown> | null | undefined): boolean {
