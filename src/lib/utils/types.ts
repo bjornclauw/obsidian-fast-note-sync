@@ -104,6 +104,8 @@ export interface FileDownloadSession {
     /** 所属下载页（0-based），从 receiveFileSyncUpdate 的 pageIndex 透传，供分片下载会话完成时归账（见 ReceiveMessage.pageIndex 注释） */
     pageIndex?: number;
     initialSlotKey?: string;
+    /** 会话创建时间，供回收超时未响应的占位会话 (temp_) 使用 / creation time, used to reap placeholders that never got a server response */
+    createdAt?: number;
 }
 
 export interface ReceiveMtimeMessage {

@@ -654,6 +654,12 @@ export class SettingTab extends PluginSettingTab {
         lastConfigSyncTime: this.plugin.localStorageManager.getMetadata("lastConfigSyncTime"),
         clientName: this.plugin.localStorageManager.getMetadata("clientName"),
 
+        // 下载会话观测：正常应回落到 0；持续增长说明有会话/占位未被清理
+        // Download-session observability: should settle back to 0; sustained growth means leaks
+        pendingDownloadSessions: this.plugin.fileDownloadSessions.size,
+        pendingDownloadPlaceholders: Array.from(this.plugin.fileDownloadSessions.keys())
+          .filter((k) => k.startsWith("temp_")).length,
+
         serverConnectionStatus: this.plugin.websocket.isConnected() ? "connected" : "disconnected",
         ...(this.plugin.websocket.isConnected()
           ? {

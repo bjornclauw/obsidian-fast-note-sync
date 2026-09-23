@@ -1,7 +1,7 @@
 import { Plugin, Platform, addIcon } from "obsidian";
 
 import { dump, dumpError, checkAndNotifyCaseConflict, setLogEnabled, isPathMatch, parseRules, stringifyRules, getPluginDir, showSyncNotice, loadApiToken, saveApiToken, loadApiUrl, saveApiUrl, loadVault, saveVault, loadAutoRedirect, saveAutoRedirect, loadWsPreProbe, saveWsPreProbe, obfuscateToken } from "./lib/utils/helpers";
-import { clearAllTempChunks, abortAllFileOperations, resetFileOperations } from "./lib/sync/operator_file";
+import { clearAllTempChunks, abortAllFileOperations, resetFileOperations, sweepStaleDownloadPlaceholders } from "./lib/sync/operator_file";
 import { SettingTab, PluginSettings, DEFAULT_SETTINGS } from "./setting";
 import { SyncLogView, SYNC_LOG_VIEW_TYPE } from "./views/sync-log-view";
 import { ShareIndicatorManager } from "./lib/ui/share_indicator_manager";
@@ -494,6 +494,12 @@ export default class FastSync extends Plugin {
 
       // 0. 清理残留的临时下载目录 (Cleanup residual temp download dirs)
       void clearAllTempChunks(this)
+
+      // 0.1 周期回收超时未响应的下载占位会话 (temp_)，避免 fileDownloadSessions 无限增长并卡住完成判定
+      // Periodically reap stale download placeholders so fileDownloadSessions can't grow unbounded / block completion
+      this.registerInterval(window.setInterval(() => {
+        sweepStaleDownloadPlaceholders(this)
+      }, 30000))
 
       // 1. 初始化统计和日志 (UI)
       void SyncLogManager.getInstance().init(this)

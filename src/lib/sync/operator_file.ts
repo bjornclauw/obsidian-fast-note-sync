@@ -175,6 +175,32 @@ export const clearAllTempChunks = async (plugin: FastSync) => {
   }
 }
 
+// 下载占位会话 (temp_<path>) 只存在于「已发送 FileChunkDownload 请求、尚未收到 FileSyncChunkDownload 响应」
+// 这段窗口内。响应到达后占位项会被真实 sessionId 会话替换并删除 (receiveFileSyncChunkDownload)。
+// 但若响应因断线 / 服务端错误 / context 不匹配而永远不到达，占位项不会被任何现有路径清理，会：
+//   1) 永久占用一个 download_<path> 并发槽；
+//   2) 让 checkSyncCompletion 的 fileDownloadSessions.size===0 永不成立，导致每轮同步都跑到 300s 超时。
+// 这里按 TTL 回收「超时仍未被替换」的占位项。只处理 temp_ 前缀，绝不触碰真实 sessionId 会话。
+// A placeholder only lives between the FileChunkDownload request and the FileSyncChunkDownload response.
+// If that response never arrives (disconnect / server error / context mismatch), nothing else removes it,
+// leaking a concurrency slot and permanently blocking completion detection. Reap only temp_ entries.
+const STALE_DOWNLOAD_PLACEHOLDER_TTL_MS = 60_000;
+
+export const sweepStaleDownloadPlaceholders = function (plugin: FastSync): void {
+  const now = Date.now();
+  for (const [key, session] of Array.from(plugin.fileDownloadSessions.entries())) {
+    if (!key.startsWith("temp_")) continue;
+    const createdAt = session.createdAt ?? 0;
+    // 未知创建时间时保守跳过，不做任何清理 (Skip when the age is unknown, to stay conservative)
+    if (createdAt <= 0 || now - createdAt < STALE_DOWNLOAD_PLACEHOLDER_TTL_MS) continue;
+    plugin.fileDownloadSessions.delete(key);
+    if (session.initialSlotKey) {
+      plugin.concurrencyLimiter.releaseSlot(session.initialSlotKey);
+    }
+    dump(`Stale file download placeholder expired (no server response in ${STALE_DOWNLOAD_PLACEHOLDER_TTL_MS}ms): ${session.path}`);
+  }
+};
+
 export const clearUploadQueue = () => {
 }
 
@@ -783,6 +809,7 @@ export const receiveFileSyncUpdate = async function (data: ReceiveFileSyncUpdate
       size: data.size,
       pageIndex: data.pageIndex,
       initialSlotKey: slotKey,
+      createdAt: Date.now(),
       ...createDownloadStorage(plugin, `init_${data.pathHash}`, data.size),
     }
     plugin.fileDownloadSessions.set(tempKey, tempSession)
@@ -973,6 +1000,7 @@ export const receiveFileSyncChunkDownload = async function (data: FileSyncChunkD
       size: data.size,
       pageIndex: tempSession.pageIndex,
       initialSlotKey: tempSession.initialSlotKey,
+      createdAt: Date.now(),
       ...createDownloadStorage(plugin, data.sessionId, data.size),
     }
     plugin.fileDownloadSessions.set(data.sessionId, session)
@@ -988,6 +1016,7 @@ export const receiveFileSyncChunkDownload = async function (data: FileSyncChunkD
       totalChunks: data.totalChunks,
       size: data.size,
       initialSlotKey: `download_${data.path}`,
+      createdAt: Date.now(),
       ...createDownloadStorage(plugin, data.sessionId, data.size),
     }
     plugin.fileDownloadSessions.set(data.sessionId, session)
